@@ -1,3 +1,4 @@
+from jaxpi.precision import set_precision
 import time
 import os
 
@@ -24,6 +25,7 @@ from utils import get_dataset, parabolic_inflow
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
+    set_precision(config.get("precision"))
     # Initialize W&B
     wandb_config = config.wandb
     wandb.init(project=wandb_config.project, name=wandb_config.name)

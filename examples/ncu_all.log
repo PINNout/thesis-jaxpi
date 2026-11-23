@@ -1,0 +1,50 @@
+[skip] adv_fp32 (already done)
+[run ] adv_fp16  (800 kernel launches)  17:07:41
+[ ok ] adv_fp16  800 kernels profiled
+[run ] adv_int8  (901 kernel launches)  17:11:05
+[ ok ] adv_int8  901 kernels profiled
+[run ] adv_fp16_native  (800 kernel launches)  17:15:17
+[ ok ] adv_fp16_native  800 kernels profiled
+[run ] burgers_fp32  (918 kernel launches)  17:18:22
+[ ok ] burgers_fp32  918 kernels profiled
+[run ] burgers_fp16  (911 kernel launches)  17:23:01
+[ ok ] burgers_fp16  911 kernels profiled
+[run ] burgers_int8  (1083 kernel launches)  17:27:27
+[ ok ] burgers_int8  1083 kernels profiled
+[run ] burgers_fp16_native  (918 kernel launches)  17:32:34
+[ ok ] burgers_fp16_native  918 kernels profiled
+[run ] allen_cahn_fp32  (855 kernel launches)  17:36:23
+[ ok ] allen_cahn_fp32  855 kernels profiled
+[run ] allen_cahn_fp16  (858 kernel launches)  17:40:22
+[ ok ] allen_cahn_fp16  858 kernels profiled
+[run ] allen_cahn_int8  (1020 kernel launches)  17:44:24
+[ ok ] allen_cahn_int8  1020 kernels profiled
+[run ] allen_cahn_fp16_native  (855 kernel launches)  17:49:26
+[ ok ] allen_cahn_fp16_native  855 kernels profiled
+[run ] ks_fp32  (1014 kernel launches)  17:52:58
+[ ok ] ks_fp32  1014 kernels profiled
+[run ] ks_fp16  (1014 kernel launches)  17:56:57
+[ ok ] ks_fp16  1014 kernels profiled
+[run ] ks_int8  (1169 kernel launches)  18:00:57
+[ ok ] ks_int8  1169 kernels profiled
+[run ] ks_fp16_native  (1027 kernel launches)  18:05:59
+[ ok ] ks_fp16_native  1027 kernels profiled
+[run ] ldc_fp32  (1119 kernel launches)  18:09:57
+[ ok ] ldc_fp32  1119 kernels profiled
+[run ] ldc_fp16  (1142 kernel launches)  18:14:46
+[ ok ] ldc_fp16  1142 kernels profiled
+[run ] ldc_int8  (1238 kernel launches)  18:19:42
+[ ok ] ldc_int8  1238 kernels profiled
+[run ] ldc_fp16_native  (1152 kernel launches)  18:25:12
+[ ok ] ldc_fp16_native  1152 kernels profiled
+[run ] ns_cyl_fp32  (1558 kernel launches)  18:29:47
+[ ok ] ns_cyl_fp32  1558 kernels profiled
+[run ] ns_cyl_fp16  (1555 kernel launches)  18:40:50
+[ ok ] ns_cyl_fp16  1555 kernels profiled
+[run ] ns_cyl_int8  (1773 kernel launches)  18:50:54
+[ ok ] ns_cyl_int8  1773 kernels profiled
+[run ] ns_cyl_fp16_native  (1601 kernel launches)  19:03:03
+[ ok ] ns_cyl_fp16_native  1601 kernels profiled
+
+finished: 23 ok, 1 skipped, 0 failed  (19:11:01)
+all CSVs copied to /home/alex/thesis/jaxpi/examples/ncu_all/   ->  attach that folder's files, or:  cd /home/alex/thesis/jaxpi/examples && zip -j ncu_all.zip ncu_all/*.csv

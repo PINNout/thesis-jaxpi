@@ -12,6 +12,12 @@ import optax
 
 from jaxpi import archs
 from jaxpi.utils import flatten_pytree
+from jaxpi.precision import (
+    get_precision,
+    quantize_grads,
+    round_params,
+    assert_hooks_used,
+)
 
 
 class TrainState(train_state.TrainState):
@@ -170,7 +176,17 @@ class PINN:
     def step(self, state, batch, *args):
         grads = grad(self.loss)(state.params, state.weights, batch, *args)
         grads = lax.pmean(grads, "batch")
+        # PRECISION HOOK: fail loudly if config.precision.residual is set but
+        # this PDE's losses() never calls quantize_residual.
+        assert_hooks_used()
+        # PRECISION HOOK "grads": round the gradient that enters the optimiser.
+        grads = quantize_grads(grads)
         state = state.apply_gradients(grads=grads)
+        # PRECISION HOOK "params": keep the stored parameters in the format.
+        # Adam's own state (m, v) and the loss weights stay FP32.
+        if get_precision()["params"] != "fp32":
+            key = random.fold_in(random.PRNGKey(0), state.step)
+            state = state.replace(params=round_params(state.params, key))
         return state
 
 

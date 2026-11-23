@@ -8,6 +8,9 @@ from jax import random, jit, vmap
 import jax.numpy as jnp
 from jax.nn.initializers import glorot_normal, normal, zeros, constant
 
+from jaxpi.precision import quantize, qdot, get_precision, to_native, from_native
+from jaxpi import mx
+
 activation_fn = {
     "relu": nn.relu,
     "gelu": nn.gelu,
@@ -96,6 +99,11 @@ class Dense(nn.Module):
     kernel_init: Callable = glorot_normal()
     bias_init: Callable = zeros
     reparam: Union[None, Dict] = None
+    # PRECISION HOOK: which entries of config.precision apply to this layer.
+    # Hidden layers use "weights" / "act_in"; the final layer overrides both
+    # with "out_layer" (see Mlp / ModifiedMlp below).
+    prec_w: str = "weights"
+    prec_x: str = "act_in"
 
     @nn.compact
     def __call__(self, x):
@@ -118,7 +126,25 @@ class Dense(nn.Module):
 
         bias = self.param("bias", self.bias_init, (self.features,))
 
-        y = jnp.dot(x, kernel) + bias
+        # Native mode: run the layer in the dtype of its input (fp16/bf16);
+        # parameters themselves stay FP32 (master copy). No-op in FP32 mode.
+        kernel = kernel.astype(x.dtype)
+        bias = bias.astype(x.dtype)
+
+        # PRECISION HOOK: round the layer input X, the effective weight W and
+        # the bias Y; qdot computes Z = X.W + Y with the "acc" accumulator
+        # format (fp32 = wide accumulator, same as jnp.dot(x, w) + bias).
+        p = get_precision()
+        if mx.enabled():
+            # Microscaling: both operands quantized in blocks along the summed
+            # dimension, at every derivative order (see jaxpi/mx.py).
+            y = mx.mx_matmul(x, kernel) + quantize(bias, p["bias"])
+        else:
+            y = qdot(
+                quantize(x, p[self.prec_x]),
+                quantize(kernel, p[self.prec_w]),
+                quantize(bias, p["bias"]),
+            )
 
         return y
 
@@ -141,18 +167,29 @@ class Mlp(nn.Module):
 
     @nn.compact
     def __call__(self, x):
+        p = get_precision()
+
         if self.periodicity:
             x = PeriodEmbs(**self.periodicity)(x)
+            x = quantize(x, p["embed"])  # PRECISION HOOK: embedding output
 
         if self.fourier_emb:
             x = FourierEmbs(**self.fourier_emb)(x)
+            x = quantize(x, p["embed"])  # PRECISION HOOK: embedding output
+
+        x = to_native(x)  # native mode only
 
         for _ in range(self.num_layers):
             x = Dense(features=self.hidden_dim, reparam=self.reparam)(x)
-            x = self.activation_fn(x)
+            x = quantize(self.activation_fn(x), p["act_out"])  # PRECISION HOOK
 
-        x = Dense(features=self.out_dim, reparam=self.reparam)(x)
-        return x
+        x = Dense(
+            features=self.out_dim,
+            reparam=self.reparam,
+            prec_w="out_layer",
+            prec_x="out_layer",
+        )(x)
+        return from_native(x)
 
 
 class ModifiedMlp(nn.Module):
@@ -170,25 +207,36 @@ class ModifiedMlp(nn.Module):
 
     @nn.compact
     def __call__(self, x):
+        p = get_precision()
+
         if self.periodicity:
             x = PeriodEmbs(**self.periodicity)(x)
+            x = quantize(x, p["embed"])  # PRECISION HOOK: embedding output
 
         if self.fourier_emb:
             x = FourierEmbs(**self.fourier_emb)(x)
+            x = quantize(x, p["embed"])  # PRECISION HOOK: embedding output
+
+        x = to_native(x)  # native mode only
 
         u = Dense(features=self.hidden_dim, reparam=self.reparam)(x)
         v = Dense(features=self.hidden_dim, reparam=self.reparam)(x)
 
-        u = self.activation_fn(u)
-        v = self.activation_fn(v)
+        u = quantize(self.activation_fn(u), p["act_out"])  # PRECISION HOOK
+        v = quantize(self.activation_fn(v), p["act_out"])  # PRECISION HOOK
 
         for _ in range(self.num_layers):
             x = Dense(features=self.hidden_dim, reparam=self.reparam)(x)
-            x = self.activation_fn(x)
-            x = x * u + (1 - x) * v
+            x = quantize(self.activation_fn(x), p["act_out"])  # PRECISION HOOK
+            x = x * u + (1 - x) * v  # gating arithmetic stays FP32
 
-        x = Dense(features=self.out_dim, reparam=self.reparam)(x)
-        return x
+        x = Dense(
+            features=self.out_dim,
+            reparam=self.reparam,
+            prec_w="out_layer",
+            prec_x="out_layer",
+        )(x)
+        return from_native(x)
 
 
 class MlpBlock(nn.Module):

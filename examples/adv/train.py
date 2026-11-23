@@ -4,6 +4,7 @@ import time
 import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
+from jaxpi.precision import set_precision
 
 import ml_collections
 
@@ -17,8 +18,8 @@ from jaxpi.utils import save_checkpoint
 import models
 from utils import get_dataset
 
-
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
+    set_precision(config.get("precision"))
     logger = Logger()
     wandb_config = config.wandb
     wandb.init(project=wandb_config.project, name=wandb_config.name)

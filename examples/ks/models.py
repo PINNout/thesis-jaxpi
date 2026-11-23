@@ -9,7 +9,7 @@ from jaxpi.evaluator import BaseEvaluator
 from jaxpi.utils import ntk_fn, flatten_pytree
 
 from matplotlib import pyplot as plt
-
+from jaxpi.precision import quantize_residual
 
 class KS(ForwardIVP):
     def __init__(self, config, u0, t_star, x_star):
@@ -45,7 +45,8 @@ class KS(ForwardIVP):
         # Sort time coordinates
         t_sorted = batch[:, 0].sort()
         r_pred = vmap(self.r_net, (None, 0, 0))(params, t_sorted, batch[:, 1])
-        # Split residuals into chunks
+        r_pred = quantize_residual(r_pred)
+	# Split residuals into chunks
         r_pred = r_pred.reshape(self.num_chunks, -1)
         l = jnp.mean(r_pred**2, axis=1)
         w = lax.stop_gradient(jnp.exp(-self.tol * (self.M @ l)))

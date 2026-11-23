@@ -19,6 +19,8 @@ from jaxpi.samplers import UniformSampler
 from jaxpi.logging import Logger
 from jaxpi.utils import save_checkpoint
 
+from jaxpi.precision import set_precision
+
 import models
 from utils import get_dataset
 
@@ -91,6 +93,8 @@ def train_curriculum(config, workdir, model, step_offset, max_steps, Re):
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
+    set_precision(config.get("precision"))
+
     # Initialize W&B
     wandb_config = config.wandb
     wandb.init(project=wandb_config.project, name=wandb_config.name)

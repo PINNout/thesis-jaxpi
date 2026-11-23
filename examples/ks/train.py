@@ -14,6 +14,8 @@ from jaxpi.samplers import UniformSampler
 from jaxpi.logging import Logger
 from jaxpi.utils import save_checkpoint
 
+from jaxpi.precision import set_precision
+
 import models
 from utils import get_dataset
 
@@ -62,6 +64,8 @@ def train_one_window(config, workdir, model, res_sampler, u_ref, idx):
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
+    set_precision(config.get("precision"))
+
     wandb_config = config.wandb
     wandb.init(project=wandb_config.project, name=wandb_config.name)
 
@@ -84,7 +88,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     # Initialize the residual sampler
     res_sampler = iter(UniformSampler(dom, config.training.batch_size))
 
-    for idx in range(config.training.num_time_windows):
+    for idx in range(config.training.get("windows_to_train", config.training.num_time_windows)):
         print("Training time window {}".format(idx + 1))
         # Get the reference solution for the current time window
         u = u_ref[num_time_steps * idx : num_time_steps * (idx + 1), :]
